@@ -1,120 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kuzu Oyunu</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      background-color: #f0f8ff;
-    }
-    canvas {
-      display: block;
-      margin: auto;
-      background-color: #a8d5e2;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Sheep Jump Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            width: 600px;
+            height: 300px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        #sheep {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 100px;
+            height: 100px;
+            transition: bottom 0.3s;
+        }
+        #obstacle {
+            position: absolute;
+            bottom: 50px;
+            right: 0;
+            width: 80px;
+            height: 80px;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+        }
+        #start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
+    <div id="game-container">
+        <div id="score">Score: 0</div>
+        <div id="start-message">Press SPACE to Start</div>
+        <img id="sheep" src="image/sheep-1.png" alt="Sheep">
+        <img id="obstacle" src="image/fence.png" alt="Fence">
+    </div>
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 800;
-    canvas.height = 400;
+    <script>
+        const sheep = document.getElementById('sheep');
+        const obstacle = document.getElementById('obstacle');
+        const scoreDisplay = document.getElementById('score');
+        const startMessage = document.getElementById('start-message');
+        
+        let isGameStarted = false;
+        let isJumping = false;
+        let score = 0;
+        let animationFrame = 1;
+        let gameInterval;
+        let obstaclePosition = 600;
 
-    // Resimler
-    const sheepImg = new Image();
-    sheepImg.src = 'image/sheep.gif';
-    const fenceImg = new Image();
-    fenceImg.src = 'image/fence.png';
+        const sheepImages = [
+            'image/sheep-1.png',
+            'image/sheep-2.png', 
+            'image/sheep-3.png', 
+            'image/sheep-4.png'
+        ];
 
-    // Kuzu özellikleri
-    let sheep = { x: 50, y: 300, width: 50, height: 50, vy: 0, jump: false };
-    const gravity = 0.8;
-    const jumpStrength = -12;
+        function startGame() {
+            if (isGameStarted) return;
+            isGameStarted = true;
+            startMessage.style.display = 'none';
+            score = 0;
+            scoreDisplay.textContent = `Score: ${score}`;
+            
+            // Sheep running animation
+            const animationTimer = setInterval(() => {
+                if (isGameStarted) {
+                    animationFrame = (animationFrame % 4) + 1;
+                    sheep.src = sheepImages[animationFrame - 1];
+                }
+            }, 100);
 
-    // Çitler
-    const fences = [];
-    let gameSpeed = 3;
-    let score = 0;
+            // Game loop
+            gameInterval = setInterval(() => {
+                if (!isGameStarted) return;
 
-    // Kontrol
-    document.addEventListener('keydown', () => {
-      if (!sheep.jump) {
-        sheep.vy = jumpStrength;
-        sheep.jump = true;
-      }
-    });
+                // Move obstacle
+                obstaclePosition -= 5;
+                obstacle.style.right = `${obstaclePosition}px`;
 
-    function drawSheep() {
-      ctx.drawImage(sheepImg, sheep.x, sheep.y, sheep.width, sheep.height);
-    }
+                // Score increment
+                score++;
+                scoreDisplay.textContent = `Score: ${score}`;
 
-    function drawFence(fence) {
-      ctx.drawImage(fenceImg, fence.x, fence.y, fence.width, fence.height);
-    }
+                // Reset obstacle
+                if (obstaclePosition < -50) {
+                    obstaclePosition = 600;
+                }
 
-    function spawnFence() {
-      fences.push({
-        x: canvas.width,
-        y: 300,
-        width: 40,
-        height: 50,
-      });
-    }
+                // Collision detection
+                const sheepRect = sheep.getBoundingClientRect();
+                const obstacleRect = obstacle.getBoundingClientRect();
 
-    function update() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Kuzu fiziği
-      sheep.y += sheep.vy;
-      sheep.vy += gravity;
-
-      if (sheep.y >= 300) {
-        sheep.y = 300;
-        sheep.jump = false;
-      }
-
-      drawSheep();
-
-      // Çitleri hareket ettir ve çiz
-      fences.forEach((fence, index) => {
-        fence.x -= gameSpeed;
-        if (fence.x + fence.width < 0) fences.splice(index, 1);
-        drawFence(fence);
-
-        // Çarpışma kontrolü
-        if (
-          sheep.x < fence.x + fence.width &&
-          sheep.x + sheep.width > fence.x &&
-          sheep.y < fence.y + fence.height &&
-          sheep.y + sheep.height > fence.y
-        ) {
-          alert(`Oyun Bitti! Skorunuz: ${score}`);
-          document.location.reload();
+                if (
+                    sheepRect.right > obstacleRect.left + 20 && 
+                    sheepRect.left < obstacleRect.right - 20 &&
+                    sheepRect.bottom > obstacleRect.top
+                ) {
+                    gameOver();
+                }
+            }, 20);
         }
-      });
 
-      // Skor
-      ctx.fillStyle = 'black';
-      ctx.font = '20px Arial';
-      ctx.fillText(`Skor: ${score}`, 10, 30);
-      score++;
-    }
+        function jump() {
+            if (isJumping || !isGameStarted) return;
+            
+            isJumping = true;
+            sheep.style.bottom = '150px';
+            
+            setTimeout(() => {
+                sheep.style.bottom = '50px';
+                isJumping = false;
+            }, 500);
+        }
 
-    setInterval(spawnFence, 2000);
+        function gameOver() {
+            clearInterval(gameInterval);
+            isGameStarted = false;
+            startMessage.textContent = `Game Over! Score: ${score}\nPress SPACE to Restart`;
+            startMessage.style.display = 'block';
+        }
 
-    function gameLoop() {
-      update();
-      requestAnimationFrame(gameLoop);
-    }
-
-    gameLoop();
-  </script>
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                if (!isGameStarted) {
+                    startGame();
+                } else {
+                    jump();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
