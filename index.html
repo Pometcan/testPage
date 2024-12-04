@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kuzu Oyunu</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f8ff;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background-color: #a8d5e2;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 400;
+
+    let sheep = { x: 50, y: 350, width: 40, height: 40, vy: 0, jump: false };
+    const gravity = 1.5;
+    const fences = [];
+    let gameSpeed = 3;
+    let score = 0;
+
+    document.addEventListener('keydown', () => {
+      if (!sheep.jump) {
+        sheep.vy = -20;
+        sheep.jump = true;
+      }
+    });
+
+    function drawSheep() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(sheep.x, sheep.y, sheep.width, sheep.height);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(sheep.x + 10, sheep.y + 10, 10, 10); // Göz
+    }
+
+    function drawFence(fence) {
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(fence.x, fence.y, fence.width, fence.height);
+    }
+
+    function spawnFence() {
+      fences.push({
+        x: canvas.width,
+        y: 350,
+        width: 20,
+        height: 50,
+      });
+    }
+
+    function update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Kuzu yerçekimi
+      sheep.y += sheep.vy;
+      sheep.vy += gravity;
+
+      if (sheep.y > 350) {
+        sheep.y = 350;
+        sheep.jump = false;
+      }
+
+      drawSheep();
+
+      // Çitleri hareket ettir ve çiz
+      fences.forEach((fence, index) => {
+        fence.x -= gameSpeed;
+        if (fence.x + fence.width < 0) fences.splice(index, 1);
+        drawFence(fence);
+
+        // Çarpışma kontrolü
+        if (
+          sheep.x < fence.x + fence.width &&
+          sheep.x + sheep.width > fence.x &&
+          sheep.y < fence.y + fence.height &&
+          sheep.y + sheep.height > fence.y
+        ) {
+          alert(`Oyun Bitti! Skorunuz: ${score}`);
+          document.location.reload();
+        }
+      });
+
+      // Skor
+      ctx.fillStyle = 'black';
+      ctx.font = '20px Arial';
+      ctx.fillText(`Skor: ${score}`, 10, 30);
+      score++;
+    }
+
+    setInterval(spawnFence, 2000);
+
+    function gameLoop() {
+      update();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
