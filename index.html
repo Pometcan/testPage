@@ -20,6 +20,7 @@
             border: 2px solid #333;
             position: relative;
             background-color: white;
+            overflow: hidden;
         }
         #ground {
             position: absolute;
@@ -36,10 +37,9 @@
             height: 100px;
             z-index: 10;
         }
-        #obstacle {
+        .obstacle {
             position: absolute;
             bottom: 50px;
-            right: -50px;
             width: 80px;
             height: 80px;
         }
@@ -67,12 +67,10 @@
         <div id="score">Score: 0</div>
         <div id="start-message">Press SPACE to Start</div>
         <img id="sheep" src="image/sheep-1.png" alt="Sheep">
-        <img id="obstacle" src="image/fence.png" alt="Fence">
     </div>
 
     <script>
         const sheep = document.getElementById('sheep');
-        const obstacle = document.getElementById('obstacle');
         const scoreDisplay = document.getElementById('score');
         const startMessage = document.getElementById('start-message');
         const gameContainer = document.getElementById('game-container');
@@ -82,10 +80,10 @@
         let score = 0;
         let animationFrame = 1;
         let gameInterval;
-        let obstaclePosition = -50;
+        let obstacleIntervalId;
         let jumpVelocity = 0;
-        const GRAVITY = 0.5;
-        const JUMP_STRENGTH = 10;
+        const GRAVITY = 0.4;
+        const JUMP_STRENGTH = 12;
 
         const sheepImages = [
             'image/sheep-1.png',
@@ -94,12 +92,50 @@
             'image/sheep-4.png'
         ];
 
+        function createObstacle(fromRight = true) {
+            const obstacle = document.createElement('img');
+            obstacle.src = 'image/fence.png';
+            obstacle.classList.add('obstacle');
+            gameContainer.appendChild(obstacle);
+
+            let position = fromRight ? gameContainer.offsetWidth : -80;
+            const moveSpeed = 5;
+            const moveDirection = fromRight ? -1 : 1;
+
+            const moveObstacle = () => {
+                if (!isGameStarted) return;
+
+                position += moveSpeed * moveDirection;
+                obstacle.style.left = `${position}px`;
+
+                // Collision detection
+                const sheepRect = sheep.getBoundingClientRect();
+                const obstacleRect = obstacle.getBoundingClientRect();
+
+                if (
+                    sheepRect.right > obstacleRect.left + 20 && 
+                    sheepRect.left < obstacleRect.right - 20 &&
+                    sheepRect.bottom > obstacleRect.top
+                ) {
+                    gameOver();
+                    return;
+                }
+
+                // Remove obstacle when out of bounds
+                if ((fromRight && position < -100) || (!fromRight && position > gameContainer.offsetWidth)) {
+                    gameContainer.removeChild(obstacle);
+                    clearInterval(obstacleInterval);
+                }
+            };
+
+            const obstacleInterval = setInterval(moveObstacle, 20);
+        }
+
         function startGame() {
             if (isGameStarted) return;
             isGameStarted = true;
             startMessage.style.display = 'none';
             score = 0;
-            obstaclePosition = gameContainer.offsetWidth;
             scoreDisplay.textContent = `Score: ${score}`;
             
             // Sheep running animation
@@ -108,24 +144,20 @@
                     animationFrame = (animationFrame % 4) + 1;
                     sheep.src = sheepImages[animationFrame - 1];
                 }
-            }, 50);  // Faster animation
+            }, 100);  // Set to 100ms as requested
 
-            // Game loop
-            gameInterval = setInterval(() => {
+            // Obstacle spawning
+            obstacleIntervalId = setInterval(() => {
                 if (!isGameStarted) return;
-
-                // Move obstacle
-                obstaclePosition -= 5;
-                obstacle.style.right = `${-obstaclePosition}px`;
-
-                // Score increment
+                // Randomly choose from left or right
+                createObstacle(Math.random() > 0.5);
                 score++;
                 scoreDisplay.textContent = `Score: ${score}`;
+            }, 2000);
 
-                // Reset obstacle
-                if (obstaclePosition < -100) {
-                    obstaclePosition = gameContainer.offsetWidth;
-                }
+            // Game loop for jumping
+            gameInterval = setInterval(() => {
+                if (!isGameStarted) return;
 
                 // Jumping mechanics
                 if (isJumping) {
@@ -142,18 +174,6 @@
 
                     sheep.style.bottom = `${sheepBottom}px`;
                 }
-
-                // Collision detection
-                const sheepRect = sheep.getBoundingClientRect();
-                const obstacleRect = obstacle.getBoundingClientRect();
-
-                if (
-                    sheepRect.right > obstacleRect.left + 20 && 
-                    sheepRect.left < obstacleRect.right - 20 &&
-                    sheepRect.bottom > obstacleRect.top
-                ) {
-                    gameOver();
-                }
             }, 20);
         }
 
@@ -166,9 +186,13 @@
 
         function gameOver() {
             clearInterval(gameInterval);
+            clearInterval(obstacleIntervalId);
             isGameStarted = false;
             startMessage.textContent = `Game Over! Score: ${score}\nPress SPACE to Restart`;
             startMessage.style.display = 'block';
+            
+            // Remove all existing obstacles
+            document.querySelectorAll('.obstacle').forEach(obs => obs.remove());
         }
 
         document.addEventListener('keydown', (event) => {
