@@ -27,36 +27,43 @@
     canvas.width = 800;
     canvas.height = 400;
 
-    let sheep = { x: 50, y: 350, width: 40, height: 40, vy: 0, jump: false };
-    const gravity = 1.5;
+    // Resimler
+    const sheepImg = new Image();
+    sheepImg.src = 'image/sheep.gif'; // Koyununuzun animasyonlu GIF dosyası
+    const fenceImg = new Image();
+    fenceImg.src = 'image/fence.png';
+
+    // Kuzu özellikleri
+    let sheep = { x: 50, y: 300, width: 50, height: 50, vy: 0, jump: false };
+    const gravity = 0.8;
+    const jumpStrength = -12;
+
+    // Çitler
     const fences = [];
     let gameSpeed = 3;
     let score = 0;
 
+    // Kontrol
     document.addEventListener('keydown', () => {
       if (!sheep.jump) {
-        sheep.vy = -20;
+        sheep.vy = jumpStrength;
         sheep.jump = true;
       }
     });
 
     function drawSheep() {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(sheep.x, sheep.y, sheep.width, sheep.height);
-      ctx.fillStyle = 'black';
-      ctx.fillRect(sheep.x + 10, sheep.y + 10, 10, 10); // Göz
+      ctx.drawImage(sheepImg, sheep.x, sheep.y, sheep.width, sheep.height);
     }
 
     function drawFence(fence) {
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(fence.x, fence.y, fence.width, fence.height);
+      ctx.drawImage(fenceImg, fence.x, fence.y, fence.width, fence.height);
     }
 
     function spawnFence() {
       fences.push({
         x: canvas.width,
-        y: 350,
-        width: 20,
+        y: 300,
+        width: 40,
         height: 50,
       });
     }
@@ -64,12 +71,12 @@
     function update() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Kuzu yerçekimi
+      // Kuzu fiziği
       sheep.y += sheep.vy;
       sheep.vy += gravity;
 
-      if (sheep.y > 350) {
-        sheep.y = 350;
+      if (sheep.y >= 300) {
+        sheep.y = 300;
         sheep.jump = false;
       }
 
