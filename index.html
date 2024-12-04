@@ -12,14 +12,21 @@
             margin: 0;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
         #game-container {
             width: 600px;
             height: 300px;
             border: 2px solid #333;
             position: relative;
-            overflow: hidden;
-            background-color: #fff;
+            background-color: white;
+        }
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #8BC34A;
         }
         #sheep {
             position: absolute;
@@ -27,12 +34,12 @@
             left: 50px;
             width: 100px;
             height: 100px;
-            transition: bottom 0.3s;
+            z-index: 10;
         }
         #obstacle {
             position: absolute;
             bottom: 50px;
-            right: 0;
+            right: -50px;
             width: 80px;
             height: 80px;
         }
@@ -41,6 +48,7 @@
             top: 10px;
             left: 10px;
             font-size: 20px;
+            z-index: 20;
         }
         #start-message {
             position: absolute;
@@ -49,11 +57,13 @@
             transform: translate(-50%, -50%);
             font-size: 24px;
             text-align: center;
+            z-index: 20;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <div id="ground"></div>
         <div id="score">Score: 0</div>
         <div id="start-message">Press SPACE to Start</div>
         <img id="sheep" src="image/sheep-1.png" alt="Sheep">
@@ -65,13 +75,17 @@
         const obstacle = document.getElementById('obstacle');
         const scoreDisplay = document.getElementById('score');
         const startMessage = document.getElementById('start-message');
+        const gameContainer = document.getElementById('game-container');
         
         let isGameStarted = false;
         let isJumping = false;
         let score = 0;
         let animationFrame = 1;
         let gameInterval;
-        let obstaclePosition = 600;
+        let obstaclePosition = -50;
+        let jumpVelocity = 0;
+        const GRAVITY = 0.5;
+        const JUMP_STRENGTH = 10;
 
         const sheepImages = [
             'image/sheep-1.png',
@@ -85,15 +99,16 @@
             isGameStarted = true;
             startMessage.style.display = 'none';
             score = 0;
+            obstaclePosition = gameContainer.offsetWidth;
             scoreDisplay.textContent = `Score: ${score}`;
             
             // Sheep running animation
             const animationTimer = setInterval(() => {
-                if (isGameStarted) {
+                if (isGameStarted && !isJumping) {
                     animationFrame = (animationFrame % 4) + 1;
                     sheep.src = sheepImages[animationFrame - 1];
                 }
-            }, 100);
+            }, 50);  // Faster animation
 
             // Game loop
             gameInterval = setInterval(() => {
@@ -101,15 +116,31 @@
 
                 // Move obstacle
                 obstaclePosition -= 5;
-                obstacle.style.right = `${obstaclePosition}px`;
+                obstacle.style.right = `${-obstaclePosition}px`;
 
                 // Score increment
                 score++;
                 scoreDisplay.textContent = `Score: ${score}`;
 
                 // Reset obstacle
-                if (obstaclePosition < -50) {
-                    obstaclePosition = 600;
+                if (obstaclePosition < -100) {
+                    obstaclePosition = gameContainer.offsetWidth;
+                }
+
+                // Jumping mechanics
+                if (isJumping) {
+                    let sheepBottom = parseFloat(sheep.style.bottom || '50');
+                    sheepBottom += jumpVelocity;
+                    jumpVelocity -= GRAVITY;
+
+                    // Ground collision
+                    if (sheepBottom <= 50) {
+                        sheepBottom = 50;
+                        isJumping = false;
+                        jumpVelocity = 0;
+                    }
+
+                    sheep.style.bottom = `${sheepBottom}px`;
                 }
 
                 // Collision detection
@@ -130,12 +161,7 @@
             if (isJumping || !isGameStarted) return;
             
             isJumping = true;
-            sheep.style.bottom = '150px';
-            
-            setTimeout(() => {
-                sheep.style.bottom = '50px';
-                isJumping = false;
-            }, 500);
+            jumpVelocity = JUMP_STRENGTH;
         }
 
         function gameOver() {
@@ -150,9 +176,8 @@
                 event.preventDefault();
                 if (!isGameStarted) {
                     startGame();
-                } else {
-                    jump();
                 }
+                jump();
             }
         });
     </script>
