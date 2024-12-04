@@ -57,7 +57,7 @@
             groundHeight: 50,
             sheepStartX: 100,
             sheepStartY: 300,
-            jumpStrength: 10,
+            jumpStrength: 0.15,
             obstacleSpeed: 5
         };
 
@@ -69,6 +69,10 @@
                 this.engine = Engine.create();
                 this.world = this.engine.world;
                 
+                // Delta time tracking
+                this.lastTime = 0;
+                this.deltaTime = 0;
+
                 // Canvas setup
                 this.canvas = document.getElementById('gameCanvas');
                 this.canvas.width = config.width;
@@ -116,13 +120,14 @@
                     { isStatic: true, render: { fillStyle: '#8BC34A' } }
                 );
 
-                // Sheep
+                // Sheep (reduced size and collider)
                 this.sheep = Bodies.rectangle(
                     config.sheepStartX, 
                     config.sheepStartY, 
-                    80, 80, 
+                    70, 70, 
                     { 
                         label: 'sheep',
+                        mass: 1,
                         render: { 
                             sprite: { 
                                 texture: this.sheepImages[0]
@@ -166,11 +171,11 @@
                     this.start();
                 }
 
-                // Jump
+                // More controlled jump
                 if (this.sheep.position.y > config.height - config.groundHeight - 100) {
                     Matter.Body.applyForce(this.sheep, this.sheep.position, {
                         x: 0,
-                        y: -0.3
+                        y: -config.jumpStrength
                     });
                 }
             }
@@ -184,34 +189,37 @@
                 this.scoreElement.textContent = `Score: ${this.score}`;
                 this.startMessage.style.display = 'none';
 
-                // Start rendering
+                // Start rendering with frame timing
                 Render.run(this.render);
-                const runner = Runner.create();
-                Runner.run(runner, this.engine);
-
-                // Start obstacle generation
-                this.obstacleInterval = setInterval(() => this.generateObstacle(), 2000);
-
-                // Animation loop
-                this.animationLoop();
+                this.runner = Runner.create();
+                this.gameLoop();
             }
 
-            animationLoop() {
+            gameLoop(currentTime = 0) {
                 if (!this.isGameStarted || this.isGameOver) return;
 
+                // Calculate delta time
+                if (this.lastTime === 0) this.lastTime = currentTime;
+                this.deltaTime = currentTime - this.lastTime;
+                this.lastTime = currentTime;
+
+                // Update physics engine with delta time
+                Engine.update(this.engine, this.deltaTime);
+
                 // Animate sheep
-                this.animationTimer += 1;
-                if (this.animationTimer % 10 === 0) {
+                this.animationTimer += this.deltaTime;
+                if (this.animationTimer >= 100) {
                     this.currentSheepImage = (this.currentSheepImage + 1) % this.sheepImages.length;
                     this.sheep.render.sprite.texture = this.sheepImages[this.currentSheepImage];
+                    this.animationTimer = 0;
                 }
 
                 // Increment score
                 this.score += 1;
                 this.scoreElement.textContent = `Score: ${this.score}`;
 
-                // Continue animation
-                requestAnimationFrame(() => this.animationLoop());
+                // Continue game loop
+                requestAnimationFrame((time) => this.gameLoop(time));
             }
 
             generateObstacle() {
@@ -259,7 +267,6 @@
 
                 this.isGameOver = true;
                 this.isGameStarted = false;
-                clearInterval(this.obstacleInterval);
 
                 this.startMessage.textContent = `Game Over! Score: ${this.score}\nPress SPACE to Restart`;
                 this.startMessage.style.display = 'block';
@@ -273,6 +280,7 @@
                 Composite.clear(this.world, false);
                 
                 // Reset game state
+                this.lastTime = 0;
                 this.setupWorld();
                 this.start();
             }
